@@ -51,3 +51,20 @@ def test_get_import_data_with_filters(sample_json):
     data = parser.get_import_data(since_ts=1500, until_ts=2500)
     assert len(data) == 1
     assert data[0][1] == {"count": 1, "latest_uts": 2000}
+
+def test_iter_scrobbles_missing_uts(tmp_path):
+    data = {"track": [{"artist": {"#text": "Artist A"}, "name": "Track A"}]} # No date/uts
+    json_path = tmp_path / "no_uts.json"
+    json_path.write_text(json.dumps(data))
+    
+    parser = Parser(json_path)
+    scrobbles = list(parser.iter_scrobbles())
+    assert len(scrobbles) == 0
+
+def test_iter_scrobbles_empty_file(tmp_path):
+    json_path = tmp_path / "empty.json"
+    json_path.write_text(json.dumps([]))
+    
+    parser = Parser(json_path)
+    scrobbles = list(parser.iter_scrobbles())
+    assert len(scrobbles) == 0
