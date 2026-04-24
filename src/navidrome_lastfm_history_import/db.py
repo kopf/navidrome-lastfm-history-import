@@ -57,6 +57,12 @@ class Database:
         if row:
             return dict(row)
 
+        # Fallback: Artist + Title match (ignoring album)
+        query = "SELECT id, artist_id, album_id FROM media_file WHERE artist LIKE ? AND title LIKE ?"
+        rows = self.conn.execute(query, (artist, title)).fetchall()
+        if len(rows) == 1:
+            return dict(rows[0])
+
         if fuzzy:
             query = "SELECT id, artist_id, album_id, artist, album, title FROM media_file WHERE artist LIKE ?"
             candidates = self.conn.execute(query, (f"%{artist}%",)).fetchall()

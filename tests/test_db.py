@@ -119,3 +119,20 @@ def test_find_track_fuzzy_variations(db):
     # Slight typos/missing words with fuzzy=True
     info = db.find_track("Zulu Pearl", "No Heroes No Honeymoons", "No Heroes No Honeymoons", fuzzy=True)
     assert info["id"] == "m1"
+
+def test_find_track_fallback_success(db):
+    # Search with wrong album, but unique artist/title
+    info = db.find_track("Zulu Pearls", "Wrong Album", "No Heroes No Honeymoons")
+    assert info is not None
+    assert info["id"] == "m1"
+
+def test_find_track_fallback_ambiguous_failure(db, mock_db_path):
+    # Add another track with same artist/title but different album
+    conn = sqlite3.connect(mock_db_path)
+    conn.execute("INSERT INTO media_file VALUES ('m2', 'art1', 'alb2', 'Zulu Pearls', 'Another Album', 'No Heroes No Honeymoons')")
+    conn.commit()
+    conn.close()
+    
+    # Search with wrong album, but multiple artist/title matches
+    info = db.find_track("Zulu Pearls", "Wrong Album", "No Heroes No Honeymoons")
+    assert info is None
