@@ -1,0 +1,27 @@
+[project]
+name = "navidrome-lastfm-history-import"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Aengus Walton", email = "ventolin@gmail.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.1.8",
+    "rapidfuzz>=3.13.0",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+navidrome-import = "navidrome_lastfm_history_import.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.10.2,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-mock>=3.15.1",
+]
