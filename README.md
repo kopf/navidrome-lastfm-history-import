@@ -8,22 +8,13 @@ Imports your Last.fm listening history into the Navidrome database.
 - **Fuzzy Matching**: Optional "slightly fuzzy" matching to handle minor metadata discrepancies (powered by `rapidfuzz`).
 - **Smart Filtering**: Automatically filter out scrobbles that occurred after your first play in Navidrome using `--before-existing` to avoid overlapping history, or manually, using `--since` and `--until` ISO dates.
 
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/navidrome-lastfm-history-import.git
-cd navidrome-lastfm-history-import
-
-# Install dependencies and the project
-uv sync
-```
-
 ## Usage
 
-Once installed, you can run the tool using `uv run`:
+Once cloned, you can run the tool using `uv run`:
 
 ```bash
+git clone https://github.com/yourusername/navidrome-lastfm-history-import.git
+cd navidrome-lastfm-history-import
 uv run navidrome-import <path_to_navidrome.db> <path_to_history.json> --user <navidrome_username> [OPTIONS]
 ```
 
