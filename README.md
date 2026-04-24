@@ -31,7 +31,6 @@ uv run navidrome-import <path_to_navidrome.db> <path_to_history.json> --user <na
 
 *   `-u, --user TEXT`: **(Required)** The Navidrome username to import plays for.
 *   `--fuzzy`: Enable slightly fuzzy matching for tracks (handles minor typos/punctuation).
-*   `--aggregate`: Merge multiple scrobbles of the same track into a single update.
 *   `--since TEXT`: Only import scrobbles after this ISO date (e.g., `2023-01-01`).
 *   `--until TEXT`: Only import scrobbles before this ISO date.
 *   `--before-existing`: Only import scrobbles that occurred *before* the earliest play recorded in your Navidrome database for the given user.

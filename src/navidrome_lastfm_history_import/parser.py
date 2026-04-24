@@ -40,33 +40,21 @@ class Parser:
 
     def get_import_data(
         self, 
-        aggregate: bool = False, 
         since_ts: Optional[int] = None, 
         until_ts: Optional[int] = None
     ) -> List[Tuple[Tuple[str, str, str], Dict[str, Any]]]:
         """
-        Returns a list of (key, stats) tuples, optionally filtered by timestamp.
+        Returns a list of aggregated (key, stats) tuples, optionally filtered by timestamp.
         """
-        if aggregate:
-            aggregated = defaultdict(lambda: {'count': 0, 'latest_uts': 0})
-            for track_data in self.iter_scrobbles(since_ts=since_ts, until_ts=until_ts):
-                artist = track_data.get('artist', {}).get('#text', '')
-                album = track_data.get('album', {}).get('#text', '')
-                title = track_data.get('name', '')
-                uts = int(track_data.get('date', {}).get('uts', 0))
-                
-                key = (artist, album, title)
-                aggregated[key]['count'] += 1
-                if uts > aggregated[key]['latest_uts']:
-                    aggregated[key]['latest_uts'] = uts
-            return list(aggregated.items())
-        else:
-            raw_data = []
-            for track_data in self.iter_scrobbles(since_ts=since_ts, until_ts=until_ts):
-                artist = track_data.get('artist', {}).get('#text', '')
-                album = track_data.get('album', {}).get('#text', '')
-                title = track_data.get('name', '')
-                uts = int(track_data.get('date', {}).get('uts', 0))
-                
-                raw_data.append(((artist, album, title), {'count': 1, 'latest_uts': uts}))
-            return raw_data
+        aggregated = defaultdict(lambda: {'count': 0, 'latest_uts': 0})
+        for track_data in self.iter_scrobbles(since_ts=since_ts, until_ts=until_ts):
+            artist = track_data.get('artist', {}).get('#text', '')
+            album = track_data.get('album', {}).get('#text', '')
+            title = track_data.get('name', '')
+            uts = int(track_data.get('date', {}).get('uts', 0))
+            
+            key = (artist, album, title)
+            aggregated[key]['count'] += 1
+            if uts > aggregated[key]['latest_uts']:
+                aggregated[key]['latest_uts'] = uts
+        return list(aggregated.items())

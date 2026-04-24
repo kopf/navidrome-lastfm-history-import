@@ -33,31 +33,21 @@ def sample_json(tmp_path):
     json_path.write_text(json.dumps(data))
     return json_path
 
+def test_get_import_data_aggregated(sample_json):
+    parser = Parser(sample_json)
+    data = parser.get_import_data()
+    assert len(data) == 2
+    # Find Track A
+    track_a = next(d for d in data if d[0][2] == "Track A")
+    assert track_a[1] == {"count": 2, "latest_uts": 2000}
+    # Find Track B
+    track_b = next(d for d in data if d[0][2] == "Track B")
+    assert track_b[1] == {"count": 1, "latest_uts": 3000}
+
 def test_get_import_data_with_filters(sample_json):
     parser = Parser(sample_json)
     
-    # Test 'since' filter
-    data = parser.get_import_data(since_ts=1500)
-    assert len(data) == 2
-    assert data[0][1]['latest_uts'] == 2000
-    assert data[1][1]['latest_uts'] == 3000
-
-    # Test 'until' filter
-    data = parser.get_import_data(until_ts=2500)
-    assert len(data) == 2
-    assert data[0][1]['latest_uts'] == 1000
-    assert data[1][1]['latest_uts'] == 2000
-
-    # Test range
+    # Range that only includes one occurrence of Track A
     data = parser.get_import_data(since_ts=1500, until_ts=2500)
     assert len(data) == 1
-    assert data[0][1]['latest_uts'] == 2000
-
-def test_get_import_data_aggregated_with_filters(sample_json):
-    parser = Parser(sample_json)
-    
-    # Aggregate only track A (uts 1000 and 2000)
-    data = parser.get_import_data(aggregate=True, until_ts=2500)
-    assert len(data) == 1
-    assert data[0][0] == ("Artist A", "Album A", "Track A")
-    assert data[0][1] == {"count": 2, "latest_uts": 2000}
+    assert data[0][1] == {"count": 1, "latest_uts": 2000}

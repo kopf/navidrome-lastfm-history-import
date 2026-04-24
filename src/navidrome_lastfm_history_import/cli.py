@@ -16,10 +16,8 @@ def parse_iso_date(date_str: Optional[str]) -> Optional[int]:
     if not date_str:
         return None
     try:
-        # Normalize 'Z' to '+00:00'
         s = date_str.replace('Z', '+00:00')
         dt = datetime.fromisoformat(s)
-        # If naive, assume UTC
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return int(dt.timestamp())
@@ -31,13 +29,12 @@ def parse_iso_date(date_str: Optional[str]) -> Optional[int]:
 @click.argument('json_path', type=click.Path(exists=True, path_type=Path))
 @click.option('--user', '-u', required=True, help='Navidrome username to import plays for.')
 @click.option('--fuzzy', is_flag=True, help='Enable slightly fuzzy matching for tracks.')
-@click.option('--aggregate', is_flag=True, default=False, help='Aggregate multiple scrobbles of the same track (default: False).')
 @click.option('--since', help='Only import scrobbles after this ISO date (e.g. 2023-01-01).')
 @click.option('--until', help='Only import scrobbles before this ISO date.')
 @click.option('--before-existing', is_flag=True, help='Only import scrobbles that occurred before the first existing play in Navidrome.')
 @click.option('--dry-run', is_flag=True, help='Show what would be done without modifying the database.')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging.')
-def main(db_path: Path, json_path: Path, user: str, fuzzy: bool, aggregate: bool, since: str, until: str, before_existing: bool, dry_run: bool, verbose: bool):
+def main(db_path: Path, json_path: Path, user: str, fuzzy: bool, since: str, until: str, before_existing: bool, dry_run: bool, verbose: bool):
     """Import Last.fm history JSON into Navidrome SQLite database."""
     
     log_level = logging.DEBUG if verbose else logging.INFO
@@ -62,16 +59,16 @@ def main(db_path: Path, json_path: Path, user: str, fuzzy: bool, aggregate: bool
         if before_existing:
             earliest_ts = db.get_earliest_play_timestamp(user_id)
             if earliest_ts:
-                logger.info(f"Filtering scrobbles before existing play date: {datetime.fromtimestamp(earliest_ts)}")
+                logger.info(f"Filtering scrobbles before existing play date: {datetime.fromtimestamp(earliest_ts, tz=timezone.utc)}")
                 if until_ts is None or earliest_ts < until_ts:
                     until_ts = earliest_ts
             else:
                 logger.warning(f"No existing plays found for user '{user}'. --before-existing filter ignored.")
 
-        logger.info(f"Loading data from {json_path} (aggregate={aggregate})...")
+        logger.info(f"Loading and aggregating data from {json_path}...")
         parser = Parser(json_path)
-        import_data = parser.get_import_data(aggregate=aggregate, since_ts=since_ts, until_ts=until_ts)
-        logger.info(f"Found {len(import_data)} scrobbles matching time filters.")
+        import_data = parser.get_import_data(since_ts=since_ts, until_ts=until_ts)
+        logger.info(f"Found {len(import_data)} unique tracks matching filters.")
 
         if not import_data:
             logger.info("No scrobbles to import.")
@@ -85,11 +82,12 @@ def main(db_path: Path, json_path: Path, user: str, fuzzy: bool, aggregate: bool
             description="Importing tracks...", 
             console=console
         ):
-            media_file_id = db.find_track(artist, album, title, fuzzy=fuzzy)
+            track_info = db.find_track(artist, album, title, fuzzy=fuzzy)
             
-            if media_file_id:
+            if track_info:
+                media_file_id = track_info["id"]
                 logger.info(f"Updating: [bold cyan]{artist}[/bold cyan] - [bold white]{title}[/bold white] ([bold yellow]{media_file_id}[/bold yellow]) (+{stats['count']} plays)")
-                db.update_plays(user_id, media_file_id, stats['count'], stats['latest_uts'], dry_run=dry_run)
+                db.update_plays(user_id, track_info, stats['count'], stats['latest_uts'], dry_run=dry_run)
                 matched_count += 1
             else:
                 logger.debug(f"Could not match: {artist} - {album} - {title}")
@@ -102,7 +100,7 @@ def main(db_path: Path, json_path: Path, user: str, fuzzy: bool, aggregate: bool
         else:
             logger.info("Dry run completed. No changes were made.")
         
-        logger.info(f"Summary: Matched {matched_count} entries, Skipped {skipped_count} entries.")
+        logger.info(f"Summary: Matched {matched_count} unique tracks, Skipped {skipped_count} tracks.")
         
     finally:
         db.close()

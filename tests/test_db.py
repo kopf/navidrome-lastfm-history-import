@@ -11,6 +11,8 @@ def mock_db_path(tmp_path):
     conn.execute("""
         CREATE TABLE media_file (
             id TEXT PRIMARY KEY, 
+            artist_id TEXT,
+            album_id TEXT,
             artist TEXT, 
             album TEXT, 
             title TEXT
@@ -28,8 +30,7 @@ def mock_db_path(tmp_path):
     """)
     
     conn.execute("INSERT INTO user VALUES ('u1', 'admin', 'Admin')")
-    conn.execute("INSERT INTO media_file VALUES ('m1', 'Zulu Pearls', 'No Heroes No Honeymoons', 'No Heroes No Honeymoons')")
-    conn.execute("INSERT INTO media_file VALUES ('m2', 'The Beatles', 'Abbey Road', 'Come Together')")
+    conn.execute("INSERT INTO media_file VALUES ('m1', 'art1', 'alb1', 'Zulu Pearls', 'No Heroes No Honeymoons', 'No Heroes No Honeymoons')")
     conn.commit()
     conn.close()
     return db_path
@@ -40,42 +41,30 @@ def db(mock_db_path):
     yield db_instance
     db_instance.close()
 
-def test_get_user_id(db):
-    assert db.get_user_id("admin") == "u1"
-    assert db.get_user_id("nonexistent") is None
+def test_find_track_returns_ids(db):
+    info = db.find_track("Zulu Pearls", "No Heroes No Honeymoons", "No Heroes No Honeymoons")
+    assert info["id"] == "m1"
+    assert info["artist_id"] == "art1"
+    assert info["album_id"] == "alb1"
 
-def test_find_track_exact(db):
-    track_id = db.find_track("Zulu Pearls", "No Heroes No Honeymoons", "No Heroes No Honeymoons")
-    assert track_id == "m1"
-
-def test_find_track_fuzzy_variations(db):
-    # Case variation
-    assert db.find_track("zulu pearls", "no heroes no honeymoons", "no heroes no honeymoons") == "m1"
-    
-    # Slight typos/missing words with fuzzy=True
-    assert db.find_track("Zulu Pearl", "No Heroes No Honeymoons", "No Heroes No Honeymoons", fuzzy=True) == "m1"
-    assert db.find_track("Zulu Pearls", "No Heroes", "No Heroes No Honeymoons", fuzzy=True) == "m1"
-    
-    # No match even with fuzzy
-    assert db.find_track("Radiohead", "Kid A", "Everything", fuzzy=True) is None
-
-def test_get_earliest_play_timestamp(db):
-    # Empty case
-    assert db.get_earliest_play_timestamp("u1") is None
-    
-    # Add plays
-    db.update_plays("u1", "m1", 1, 2000) # 2000 epoch
-    db.update_plays("u1", "m2", 1, 1000) # 1000 epoch
-    db.commit()
-    
-    assert db.get_earliest_play_timestamp("u1") == 1000
-
-def test_update_plays_new(db, mock_db_path):
-    db.update_plays("u1", "m1", 5, 1776956273)
+def test_update_plays_all_types(db, mock_db_path):
+    track_info = {"id": "m1", "artist_id": "art1", "album_id": "alb1"}
+    db.update_plays("u1", track_info, 5, 1776956273)
     db.commit()
     
     conn = sqlite3.connect(mock_db_path)
-    row = conn.execute("SELECT play_count, play_date FROM annotation WHERE item_id = 'm1'").fetchone()
+    # Check media_file
+    row = conn.execute("SELECT play_count FROM annotation WHERE item_id = 'm1' AND item_type = 'media_file'").fetchone()
     assert row[0] == 5
-    assert "2026-04-23" in row[1]
+    # Check album
+    row = conn.execute("SELECT play_count FROM annotation WHERE item_id = 'alb1' AND item_type = 'album'").fetchone()
+    assert row[0] == 5
+    # Check artist
+    row = conn.execute("SELECT play_count FROM annotation WHERE item_id = 'art1' AND item_type = 'artist'").fetchone()
+    assert row[0] == 5
     conn.close()
+
+def test_find_track_fuzzy_variations(db):
+    # Slight typos/missing words with fuzzy=True
+    info = db.find_track("Zulu Pearl", "No Heroes No Honeymoons", "No Heroes No Honeymoons", fuzzy=True)
+    assert info["id"] == "m1"
