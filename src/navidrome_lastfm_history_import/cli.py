@@ -1,6 +1,7 @@
 import click
 from pathlib import Path
 import logging
+import sys
 from datetime import datetime, timezone
 from rich.console import Console
 from rich.logging import RichHandler
@@ -10,7 +11,10 @@ from typing import Optional
 from .db import Database
 from .parser import Parser
 
-console = Console()
+# Use stdout for standard output/logging
+console = Console(file=sys.stdout)
+# Use stderr for progress bars and errors that should always be visible in the terminal
+error_console = Console(stderr=True)
 
 def parse_iso_date(date_str: Optional[str]) -> Optional[int]:
     if not date_str:
@@ -80,7 +84,7 @@ def main(db_path: Path, json_path: Path, user: str, fuzzy: bool, since: str, unt
         for (artist, album, title), stats in track(
             import_data, 
             description="Importing tracks...", 
-            console=console
+            console=error_console
         ):
             track_info = db.find_track(artist, album, title, fuzzy=fuzzy)
             
