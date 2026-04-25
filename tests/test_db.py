@@ -136,3 +136,27 @@ def test_find_track_fallback_ambiguous_failure(db, mock_db_path):
     # Search with wrong album, but multiple artist/title matches
     info = db.find_track("Zulu Pearls", "Wrong Album", "No Heroes No Honeymoons")
     assert info is None
+
+def test_find_track_normalization_ampersand_and(db, mock_db_path):
+    # Real world example: DB has "And", Search has "&"
+    conn = sqlite3.connect(mock_db_path)
+    conn.execute("INSERT INTO media_file VALUES ('m_ry', 'art_ry', 'alb_ry', 'Ry And Frank Wiedemann', 'Howling EP', 'Howling (Radio Version)')")
+    conn.commit()
+    conn.close()
+
+    # Search with "&"
+    info = db.find_track("Ry & Frank Wiedemann", "Howling EP", "Howling (Radio Version)", fuzzy=True)
+    assert info is not None
+    assert info["id"] == "m_ry"
+
+def test_find_track_normalization_and_ampersand(db, mock_db_path):
+    # Vice-versa: DB has "&", Search has "And"
+    conn = sqlite3.connect(mock_db_path)
+    conn.execute("INSERT INTO media_file VALUES ('m_and', 'art_and', 'alb_and', 'Artist & Band', 'Album', 'Title')")
+    conn.commit()
+    conn.close()
+
+    # Search with "And"
+    info = db.find_track("Artist And Band", "Album", "Title", fuzzy=True)
+    assert info is not None
+    assert info["id"] == "m_and"

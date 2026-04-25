@@ -39,7 +39,12 @@ class Database:
     def _normalize(self, text: str) -> str:
         if not text:
             return ""
-        return re.sub(r"[^\w\s]", "", text.lower()).strip()
+        # Normalize '&' to 'and'
+        text = text.lower().replace("&", " and ")
+        # Replace punctuation with spaces
+        text = re.sub(r"[^\w\s]", " ", text)
+        # Collapse multiple spaces and strip
+        return " ".join(text.split())
 
     def find_track(self, artist: str, album: str, title: str, fuzzy: bool = False) -> Optional[Dict[str, str]]:
         """
@@ -64,8 +69,14 @@ class Database:
             return dict(rows[0])
 
         if fuzzy:
+            # Create a broad search pattern for candidates
+            # Replace ' & ', ' and ', and spaces with '%' to find potential matches
+            broad_artist = artist.lower().replace(" & ", " ").replace(" and ", " ")
+            broad_artist = re.sub(r"[^\w\s]", " ", broad_artist)
+            search_pattern = "%" + "%".join(broad_artist.split()) + "%"
+
             query = "SELECT id, artist_id, album_id, artist, album, title FROM media_file WHERE artist LIKE ?"
-            candidates = self.conn.execute(query, (f"%{artist}%",)).fetchall()
+            candidates = self.conn.execute(query, (search_pattern,)).fetchall()
             
             best_score = 0
             best_match = None
